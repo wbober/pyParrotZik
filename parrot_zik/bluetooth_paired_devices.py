@@ -1,9 +1,12 @@
-import dbus
+import logging
 import sys
 import re
+import itertools
 from subprocess import Popen, PIPE, STDOUT
 
 from .resource_manager import GenericResourceManager
+
+logger = logging.getLogger(__name__)
 
 if sys.platform == "darwin":
     from binplist import binplist
@@ -12,10 +15,11 @@ else:
     import bluetooth
     if sys.platform == "win32":
         import _winreg
+    elif sys.platform == "linux":
+        import dbus
 
-
-p = re.compile('90:03:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}|'
-               'A0:14:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}')
+p = re.compile('90:03:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}|'
+               'a0:14:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}')
 
 
 class BluetoothDeviceManager(object):
@@ -92,21 +96,24 @@ def get_parrot_zik_mac_darwin():
 
 
 def get_parrot_zik_mac_windows():
+    logger.debug("Connecting to winreg")
     aReg = _winreg.ConnectRegistry(None, _winreg.HKEY_LOCAL_MACHINE)
-    aKey = _winreg.OpenKey(
-        aReg, 'SYSTEM\CurrentControlSet\Services\
-        BTHPORT\Parameters\Devices')
-    for i in range(10):
+    logger.debug("Opening key")
+    aKey = _winreg.OpenKey(aReg, r'SYSTEM\CurrentControlSet\Services\BTHPORT\Parameters\Devices')
+    
+    i=itertools.count(1)
+    while True:
         try:
-            asubkey_name = _winreg.EnumKey(aKey, i)
+            logger.debug("Find MAC")
+            asubkey_name = _winreg.EnumKey(aKey, next(i))
+            logger.debug("{}".format(asubkey_name))
             mac = ':'.join(asubkey_name[i:i+2] for i in range(0, 12, 2))
-            res = p.findall(mac)
+            res = p.findall(mac.lower())
+            logger.debug("MAC: %s", mac)
             if len(res) > 0:
                 return res[0]
-            else:
-                raise DeviceNotConnected
-        except EnvironmentError:
-            pass
+        except OSError:
+            raise DeviceNotConnected
 
 
 if sys.platform in ['linux', 'linux2']:
@@ -120,7 +127,9 @@ else:
 
 
 def connect():
+    logger.debug("Connect!")
     mac = get_parrot_zik_mac()
+    logger.debug("MAC: {}".format(mac))
     if sys.platform == "darwin":
         service_matches = lightblue.findservices(
             name="Parrot RFcomm service", addr=mac)
@@ -131,11 +140,14 @@ def connect():
         service_matches = []
         for uuid in uuids:
             try:
+                logger.debug("finding service %s %s", uuid, mac)
                 service_matches = bluetooth.find_service(uuid=uuid, address=mac)
-            except bluetooth.btcommon.BluetoothError:
-                pass
+            except bluetooth.btcommon.BluetoothError as e:
+                logger.exception(e)
             if service_matches:
                 break
+
+    logger.debug("Service match: %s", service_matches)
 
     if len(service_matches) == 0:
         raise ConnectionFailure

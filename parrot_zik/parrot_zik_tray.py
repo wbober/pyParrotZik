@@ -1,7 +1,12 @@
+import logging
+logging.basicConfig(level = logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 from parrot_zik.interface.version1 import ParrotZikVersion1Interface
 from parrot_zik.interface.version2 import ParrotZikVersion2Interface
 from parrot_zik import resource_manager
 from parrot_zik import bluetooth_paired_devices
+logger.debug(bluetooth_paired_devices.__file__)
 from parrot_zik.indicator import MenuItem
 from parrot_zik.indicator import Menu
 from parrot_zik.indicator import SysIndicator
@@ -33,11 +38,14 @@ class ParrotZikIndicator(SysIndicator):
     @repeat
     def reconnect(self):
         if self.active_interface:
+            logger.debug("No active interface")
             self.reconnect.stop()
         else:
             self.info("Trying to connect")
             try:
+                self.info("Calling bluetooth_paired_devices.connect()")
                 manager = bluetooth_paired_devices.connect()
+                self.info("Done")
             except bluetooth_paired_devices.BluetoothIsNotOn:
                 self.info("Bluetooth is turned off")
             except bluetooth_paired_devices.DeviceNotConnected:
@@ -60,7 +68,7 @@ class ParrotZikIndicator(SysIndicator):
 
     def info(self, message):
         self.info_item.set_label(message)
-        print(message)
+        logger.info(message)
 
     @repeat
     def autorefresh(self):
@@ -74,7 +82,11 @@ class ParrotZikIndicator(SysIndicator):
     def main(cls):
         try:
             indicator = cls()
+            logger.debug(indicator)
             cls.reconnect.start(indicator, RECONNECT_FREQUENCY)
             super(ParrotZikIndicator, cls).main()
         except KeyboardInterrupt:
             pass
+
+if __name__ == "__main__":
+    ParrotZikIndicator.main()

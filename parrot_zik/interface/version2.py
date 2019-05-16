@@ -1,4 +1,5 @@
 import functools
+import logging
 
 from parrot_zik import resource_manager
 from parrot_zik.indicator import MenuItem, Menu
@@ -12,6 +13,7 @@ class ParrotZikVersion2Interface(ParrotZikBaseInterface):
     parrot_class = ParrotZikVersion2
 
     def __init__(self, indicator):
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.room_dirty = False
         self.angle_dirty = False
         self.noise_cancelation_dirty = False
@@ -210,7 +212,9 @@ class ParrotZikVersion2Interface(ParrotZikBaseInterface):
             menu_item.set_active(angle == active_angle)
 
     def toggle_noise_cancelation(self, noise_cancelation, widget):
+        self.logger.debug("toggle noise cancelation")
         try:
+            self.logger.debug("self.noise_cancelation_dirty %d", self.noise_cancelation_dirty)
             if not self.noise_cancelation_dirty:
                 self.parrot.noise_control = noise_cancelation
                 self.noise_cancelation_dirty = True

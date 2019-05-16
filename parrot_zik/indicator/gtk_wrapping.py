@@ -19,6 +19,9 @@ class GTKMenu(object):
     def poVpdown(self, *args, **kwargs):
         pass
 
+    def popdown(self):
+        self.gtk_menu.popdown()
+
 
 class GTKMenuItem(MenuItemBase):
     def __init__(self, name, action, sensitive=True, checkitem=False, visible=True):

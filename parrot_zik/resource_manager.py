@@ -1,3 +1,4 @@
+import logging
 import bluetooth
 from operator import itemgetter
 import sys
@@ -14,6 +15,7 @@ class ResourceManagerBase(object):
     def __init__(self, socket, resource_values=None):
         self.sock = socket
         self.resource_values = resource_values or {}
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def get(self, resource):
         try:
@@ -24,6 +26,7 @@ class ResourceManagerBase(object):
     def fetch(self, resource):
         result = self.send_message(self._create_message(resource, 'get'))
         self.resource_values[resource] = result
+        self.logger.debug('Resource %s value %s', resource, result)
         return result
 
     def toggle_on(self, resource):
@@ -35,6 +38,7 @@ class ResourceManagerBase(object):
         self.fetch(resource)
 
     def set(self, resource, arg):
+        self.logger.debug('Setting resource %s to %s', resource, arg)
         self.send_message(self._create_message(resource, 'set', arg))
         self.fetch(resource)
 
